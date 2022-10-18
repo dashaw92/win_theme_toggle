@@ -44,6 +44,10 @@ impl Config {
             }
         };
 
+        if config.light_time == config.dark_time {
+            return Err("Light and dark time cannot be the same".into());
+        }
+
         Ok(config)
     }
 
