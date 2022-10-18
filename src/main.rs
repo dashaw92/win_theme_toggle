@@ -33,7 +33,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn get_config_file() -> PathBuf {
-    let mut pwd = env::current_dir().expect("Failed to get current dir.");
+    let mut pwd = env::current_exe()
+        .expect("Failed to get current dir.")
+        .parent()
+        .expect("Call to parent() failed")
+        .to_path_buf();
     pwd.push("config.toml");
+
+    println!("Config is located at: {:?}", pwd);
     pwd
 }
