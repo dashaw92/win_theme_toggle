@@ -5,7 +5,7 @@ use winreg::{
     RegKey,
 };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Theme {
     Dark,
     Light,
@@ -13,6 +13,7 @@ pub(crate) enum Theme {
 
 //Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value {} -Type Dword -Force
 pub(crate) fn set_theme(theme: Theme) -> Result<(), Box<dyn Error>> {
+    println!("Attempting to set theme to {:?}", &theme);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let path = hkcu.open_subkey_with_flags(
         r#"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"#,

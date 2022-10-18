@@ -27,6 +27,7 @@ impl Default for Config {
 
 impl Config {
     pub(crate) fn from_cfg<P: AsRef<Path>>(config: P) -> Result<Self, Box<dyn std::error::Error>> {
+        println!("Loading config.");
         let config = match read_to_string(&config) {
             Ok(file) => toml::from_str(&file)?,
             Err(_) => {
