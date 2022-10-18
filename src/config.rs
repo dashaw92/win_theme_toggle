@@ -15,7 +15,7 @@ pub(crate) struct Config {
 
 //Defaults:
 //Light time switch at 7:30 AM
-//Dark time switch at 6:00 PM
+//Dark time switch at 5:30 PM
 impl Default for Config {
     fn default() -> Self {
         Self {
