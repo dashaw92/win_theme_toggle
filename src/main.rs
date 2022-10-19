@@ -1,65 +1,33 @@
-#![windows_subsystem = "windows"]
-
+use std::env;
 use std::error::Error;
 use std::path::PathBuf;
-use std::time::Duration;
-use std::{env, thread};
 
 mod config;
 mod reg;
-
-use reg::Theme;
+mod service;
 
 use crate::config::Config;
+use crate::reg::Theme;
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Parsing args.");
     let arg: String = env::args().skip(1).take(1).collect();
     match arg.trim().to_lowercase().as_str() {
-        "" => {}
         cmd @ "dark" | cmd @ "light" => {
             println!("Found force flag, setting to \"{}\"", cmd);
             reg::set_theme(cmd.into())?;
             return Ok(());
         }
-        "service" => {
-            println!("Found service flag, running as a service.");
-            let config = Config::from_cfg(get_config_file())?;
-            let mut last = get_theme(&config);
-            let mut now;
-
-            reg::set_theme(last)?;
-            loop {
-                now = get_theme(&config);
-
-                if now == last {
-                    continue;
-                }
-
-                println!(
-                    "Checking for auto-theme change: Last: {:?}, now: {:?}",
-                    &last, &now
-                );
-                reg::set_theme(now)?;
-                last = now;
-                thread::sleep(Duration::from_secs(1));
-            }
-        }
-        _ => {
-            eprintln!("Unknown command. Expected either \"dark\", \"light\", \"service\", or no args at all. Ignoring...");
-        }
+        // "" => {
+        //     let config = Config::from_cfg(get_config_file())?;
+        //     return reg::set_theme(get_theme(&config));
+        // }
+        _ => {}
     }
-
-    let config = Config::from_cfg(get_config_file())?;
-    println!("Setting the theme.");
-    reg::set_theme(if config.is_light_time() {
-        reg::Theme::Light
-    } else {
-        reg::Theme::Dark
-    })
+    run_service()
 }
 
-fn get_config_file() -> PathBuf {
+pub(crate) fn get_config_file() -> PathBuf {
     let mut pwd = env::current_exe()
         .expect("Failed to get current dir.")
         .parent()
@@ -71,10 +39,14 @@ fn get_config_file() -> PathBuf {
     pwd
 }
 
-fn get_theme(config: &Config) -> Theme {
+pub(crate) fn get_theme(config: &Config) -> Theme {
     if config.is_light_time() {
-        reg::Theme::Light
+        Theme::Light
     } else {
-        reg::Theme::Dark
+        Theme::Dark
     }
+}
+
+fn run_service() -> Result<(), Box<dyn Error>> {
+    service::start_service().map_err(|_| "Failed to run service".into())
 }
