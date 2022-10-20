@@ -4,6 +4,8 @@ use std::{
     path::Path,
 };
 
+use crate::debug;
+
 use chrono::{Local, NaiveTime};
 use serde::{Deserialize, Serialize};
 
@@ -27,13 +29,16 @@ impl Default for Config {
 
 impl Config {
     pub(crate) fn from_cfg<P: AsRef<Path>>(config: P) -> Result<Self, Box<dyn std::error::Error>> {
+        debug!("Loading config file");
         let config = match read_to_string(&config) {
             Ok(file) => toml::from_str(&file)?,
             Err(_) => {
+                debug!("Config file does not exist, attempting to create one.");
                 let mut config = File::create(config)?;
                 let default = toml::to_string(&Config::default())?;
 
                 if let Err(e) = config.write_all(default.as_bytes()) {
+                    debug!("Failed to write new config file: {:?}", e);
                     return Err(e.into());
                 }
 

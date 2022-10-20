@@ -3,7 +3,7 @@ use winreg::{
     RegKey,
 };
 
-use crate::UnitResult;
+use crate::WttResult;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Theme {
@@ -12,7 +12,7 @@ pub(crate) enum Theme {
 }
 
 //Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value {} -Type Dword -Force
-pub(crate) fn set_theme(theme: Theme) -> UnitResult {
+pub(crate) fn set_theme(theme: Theme) -> WttResult {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let path = hkcu.open_subkey_with_flags(
         r#"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"#,
@@ -26,7 +26,7 @@ pub(crate) fn set_theme(theme: Theme) -> UnitResult {
             Theme::Light => 1u32,
         },
     )?;
-    Ok(())
+    Ok("Registry has been updated.")
 }
 
 impl<S: AsRef<str>> From<S> for Theme {

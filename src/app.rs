@@ -1,12 +1,13 @@
 use crossbeam_channel::Receiver;
 
 use self::AppMode::*;
-use std::time::Duration;
+use std::{error::Error, time::Duration};
 
 use crate::{
     config::Config,
+    debug,
     reg::{self, Theme},
-    UnitResult,
+    WttResult,
 };
 
 pub(crate) enum AppMode {
@@ -22,7 +23,7 @@ pub(crate) enum Message {
     UpdateConfig(Config),
 }
 
-pub(crate) fn launch(mode: AppMode) -> UnitResult {
+pub(crate) fn launch(mode: AppMode) -> WttResult {
     let (config, rx) = match mode {
         ForceTheme(theme) => return reg::set_theme(theme),
         Auto(config) => return reg::set_theme(get_theme(&config)),
@@ -40,7 +41,7 @@ fn get_theme(config: &Config) -> Theme {
     }
 }
 
-fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> UnitResult {
+fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> Result<&'static str, Box<dyn Error>> {
     enum InnerMode {
         Auto,
         Force(Theme),
@@ -57,12 +58,13 @@ fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> UnitResult {
     loop {
         let mut recv = rx.recv_timeout(Duration::from_secs(1));
         if recv.is_ok() {
-            dbg!(&recv);
+            debug!("app::impl(recv) = {:?}", &recv);
         }
 
         match recv {
-            Ok(Message::Shutdown) => return Err("Got termination signal, shutting down...".into()),
+            Ok(Message::Shutdown) => return Ok("Got termination signal, shutting down..."),
             Ok(Message::Override(theme)) => {
+                debug!("Got an Override theme message!");
                 if let Some(theme) = theme {
                     mode = Force(theme);
                 } else {
@@ -70,6 +72,7 @@ fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> UnitResult {
                 }
             }
             Ok(Message::UpdateConfig(ref mut new_config)) => {
+                debug!("Got an UpdateConfig message, swapping out old config!");
                 std::mem::swap(new_config, &mut config);
             }
             Err(_e) => {}

@@ -1,6 +1,6 @@
 use crate::app::Message;
 use crate::reg::Theme;
-use crate::UnitResult;
+use crate::WttResult;
 use crossbeam_channel::{Receiver, Sender};
 use tray_item::TrayItem;
 
@@ -8,7 +8,7 @@ pub(crate) fn start(
     app_tx: Sender<Message>,
     main_tx: Sender<()>,
     main_rx: Receiver<()>,
-) -> UnitResult {
+) -> WttResult {
     let mut tray = TrayItem::new("Win Theme Toggle", "wtt-icon")?;
     let tray = tray.inner_mut();
     tray.add_label("Win Theme Toggle")?;
@@ -43,7 +43,7 @@ pub(crate) fn start(
 
     loop {
         if let Ok(()) = main_rx.recv() {
-            return Ok(());
+            return Ok("Got termination signal, disposing of tray icon.");
         }
     }
 }
