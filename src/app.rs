@@ -15,9 +15,11 @@ pub(crate) enum AppMode {
     Daemon(Config, Receiver<Message>),
 }
 
+#[derive(Debug)]
 pub(crate) enum Message {
     Shutdown,
     Override(Option<Theme>),
+    UpdateConfig(Config),
 }
 
 pub(crate) fn launch(mode: AppMode) -> UnitResult {
@@ -38,7 +40,7 @@ fn get_theme(config: &Config) -> Theme {
     }
 }
 
-fn impl_daemon(config: Config, rx: Receiver<Message>) -> UnitResult {
+fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> UnitResult {
     enum InnerMode {
         Auto,
         Force(Theme),
@@ -53,7 +55,12 @@ fn impl_daemon(config: Config, rx: Receiver<Message>) -> UnitResult {
 
     reg::set_theme(last)?;
     loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
+        let mut recv = rx.recv_timeout(Duration::from_secs(1));
+        if recv.is_ok() {
+            dbg!(&recv);
+        }
+
+        match recv {
             Ok(Message::Shutdown) => return Err("Got termination signal, shutting down...".into()),
             Ok(Message::Override(theme)) => {
                 if let Some(theme) = theme {
@@ -61,6 +68,9 @@ fn impl_daemon(config: Config, rx: Receiver<Message>) -> UnitResult {
                 } else {
                     mode = Auto;
                 }
+            }
+            Ok(Message::UpdateConfig(ref mut new_config)) => {
+                std::mem::swap(new_config, &mut config);
             }
             Err(_e) => {}
         }
