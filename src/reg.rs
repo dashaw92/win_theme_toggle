@@ -1,9 +1,9 @@
-use std::error::Error;
-
 use winreg::{
     enums::{HKEY_CURRENT_USER, KEY_SET_VALUE},
     RegKey,
 };
+
+use crate::UnitResult;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Theme {
@@ -12,8 +12,7 @@ pub(crate) enum Theme {
 }
 
 //Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value {} -Type Dword -Force
-pub(crate) fn set_theme(theme: Theme) -> Result<(), Box<dyn Error>> {
-    println!("Attempting to set theme to {:?}", &theme);
+pub(crate) fn set_theme(theme: Theme) -> UnitResult {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let path = hkcu.open_subkey_with_flags(
         r#"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"#,

@@ -9,3 +9,8 @@ toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 winreg = { version = "0.10", default-features = false }
 chrono = { version = "0.4", features = ["serde"] }
+tray-item = "0.7.1"
+crossbeam-channel = "0.5"
+
+[build-dependencies]
+windres = "0.2"

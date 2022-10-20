@@ -1,31 +1,75 @@
-use std::env;
 use std::error::Error;
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver};
-use std::time::Duration;
+use std::{env, thread};
 
+mod app;
 mod config;
 mod reg;
 
-use crate::config::Config;
-use crate::reg::Theme;
+use app::Message;
+use reg::Theme;
+use tray_item::TrayItem;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    println!("Parsing args.");
+use crate::app::AppMode;
+use crate::config::Config;
+
+pub(crate) type UnitResult = Result<(), Box<dyn Error>>;
+
+fn main() -> UnitResult {
+    let (app_tx, app_rx) = crossbeam_channel::unbounded();
+    let (main_tx, main_rx) = crossbeam_channel::unbounded();
+
     let arg: String = env::args().skip(1).take(1).collect();
-    match arg.trim().to_lowercase().as_str() {
-        cmd @ "dark" | cmd @ "light" => {
-            println!("Found force flag, setting to \"{}\"", cmd);
-            reg::set_theme(cmd.into())?;
-            return Ok(());
-        }
-        "auto" => {
+    let mode = match arg.trim().to_lowercase().as_str() {
+        cmd @ "dark" | cmd @ "light" => AppMode::ForceTheme(cmd.into()),
+        "auto" => AppMode::Auto(Config::from_cfg(get_config_file())?),
+        _ => {
             let config = Config::from_cfg(get_config_file())?;
-            return reg::set_theme(get_theme(&config));
+            AppMode::Daemon(config, app_rx)
         }
-        _ => {}
+    };
+
+    thread::spawn(|| {
+        let _ = app::launch(mode);
+    });
+
+    let mut tray = TrayItem::new("Win Theme Toggle", "wtt-icon")?;
+    let tray = tray.inner_mut();
+    tray.add_label("Win Theme Toggle")?;
+
+    let tx = app_tx.clone();
+    tray.add_menu_item("Dark", move || {
+        tx.send(Message::Override(Some(Theme::Dark)))
+            .expect("Failed to send override command!");
+    })?;
+
+    let tx = app_tx.clone();
+    tray.add_menu_item("Light", move || {
+        tx.send(Message::Override(Some(Theme::Light)))
+            .expect("Failed to send override command!");
+    })?;
+
+    let tx = app_tx.clone();
+    tray.add_menu_item("Auto", move || {
+        tx.send(Message::Override(None))
+            .expect("Failed to send override command!");
+    })?;
+
+    tray.add_separator()?;
+
+    // let tx = app_tx.clone();
+    tray.add_menu_item("Quit", move || {
+        app_tx
+            .send(Message::Shutdown)
+            .expect("Failed to send shutdown message!");
+        main_tx.send(()).expect("Failed to send shutdown message!");
+    })?;
+    loop {
+        if let Ok(()) = main_rx.recv() {
+            break;
+        }
     }
-    run_service()
+    Ok(())
 }
 
 pub(crate) fn get_config_file() -> PathBuf {
@@ -36,47 +80,5 @@ pub(crate) fn get_config_file() -> PathBuf {
         .to_path_buf();
     pwd.push("config.toml");
 
-    println!("Config is located at: {:?}", pwd);
     pwd
-}
-
-pub(crate) fn get_theme(config: &Config) -> Theme {
-    if config.is_light_time() {
-        Theme::Light
-    } else {
-        Theme::Dark
-    }
-}
-
-fn run_service() -> Result<(), Box<dyn Error>> {
-    let (_tx, rx) = mpsc::channel::<()>();
-    service_impl(rx)
-}
-
-fn service_impl(rx: Receiver<()>) -> Result<(), Box<dyn Error>> {
-    let config = Config::from_cfg(get_config_file())?;
-    let mut last = get_theme(&config);
-    let mut now;
-
-    reg::set_theme(last)?;
-    loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
-            Ok(_) => return Err("Got termination signal, shutting down...".into()),
-            Err(mpsc::RecvTimeoutError::Disconnected) => return Err("Channel is broken!".into()),
-            _ => {}
-        }
-
-        now = get_theme(&config);
-
-        if now == last {
-            continue;
-        }
-
-        println!(
-            "Checking for auto-theme change: Last: {:?}, now: {:?}",
-            &last, &now
-        );
-        reg::set_theme(now)?;
-        last = now;
-    }
 }

@@ -27,16 +27,13 @@ impl Default for Config {
 
 impl Config {
     pub(crate) fn from_cfg<P: AsRef<Path>>(config: P) -> Result<Self, Box<dyn std::error::Error>> {
-        println!("Loading config.");
         let config = match read_to_string(&config) {
             Ok(file) => toml::from_str(&file)?,
             Err(_) => {
-                eprintln!("Config file not found. Attempting to create...");
                 let mut config = File::create(config)?;
                 let default = toml::to_string(&Config::default())?;
 
                 if let Err(e) = config.write_all(default.as_bytes()) {
-                    eprintln!("Could not create config file. Aborting.");
                     return Err(e.into());
                 }
 
