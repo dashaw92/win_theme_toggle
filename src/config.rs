@@ -9,7 +9,7 @@ use crate::debug;
 use chrono::{Local, NaiveTime};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct Config {
     light_time: NaiveTime,
     dark_time: NaiveTime,

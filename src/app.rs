@@ -16,7 +16,7 @@ pub(crate) enum AppMode {
     Daemon(Config, Receiver<Message>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Message {
     Shutdown,
     Override(Option<Theme>),

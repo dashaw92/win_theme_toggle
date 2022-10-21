@@ -13,27 +13,12 @@ pub(crate) fn start(
     let tray = tray.inner_mut();
     tray.add_label("Win Theme Toggle")?;
 
-    let tx = app_tx.clone();
-    tray.add_menu_item("Dark", move || {
-        tx.send(Message::Override(Some(Theme::Dark)))
-            .expect("Failed to send override command!");
-    })?;
-
-    let tx = app_tx.clone();
-    tray.add_menu_item("Light", move || {
-        tx.send(Message::Override(Some(Theme::Light)))
-            .expect("Failed to send override command!");
-    })?;
-
-    let tx = app_tx.clone();
-    tray.add_menu_item("Auto", move || {
-        tx.send(Message::Override(None))
-            .expect("Failed to send override command!");
-    })?;
+    tray.add_menu_item("Dark", build_override(app_tx.clone(), Some(Theme::Dark)))?;
+    tray.add_menu_item("Light", build_override(app_tx.clone(), Some(Theme::Light)))?;
+    tray.add_menu_item("Auto", build_override(app_tx.clone(), None))?;
 
     tray.add_separator()?;
 
-    // let tx = app_tx.clone();
     tray.add_menu_item("Quit", move || {
         app_tx
             .send(Message::Shutdown)
@@ -45,5 +30,15 @@ pub(crate) fn start(
         if let Ok(()) = main_rx.recv() {
             return Ok("Got termination signal, disposing of tray icon.");
         }
+    }
+}
+
+fn build_override(tx: Sender<Message>, theme: Option<Theme>) -> impl Fn() {
+    send_message(tx, Message::Override(theme))
+}
+
+fn send_message(tx: Sender<Message>, msg: Message) -> impl Fn() {
+    move || {
+        tx.send(msg.clone()).expect("Failed to send message!");
     }
 }
