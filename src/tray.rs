@@ -1,6 +1,8 @@
-use crate::app::Message;
+use std::process::Command;
+
 use crate::reg::Theme;
 use crate::WttResult;
+use crate::{app::Message, get_config_file};
 use crossbeam_channel::{Receiver, Sender};
 use tray_item::TrayItem;
 
@@ -18,6 +20,12 @@ pub(crate) fn start(
     tray.add_menu_item("Auto", build_override(app_tx.clone(), None))?;
 
     tray.add_separator()?;
+
+    tray.add_menu_item("Config", || {
+        let _ = Command::new("cmd")
+            .args(["/c", "start", get_config_file().to_str().unwrap()])
+            .spawn();
+    })?;
 
     tray.add_menu_item("Quit", move || {
         app_tx
