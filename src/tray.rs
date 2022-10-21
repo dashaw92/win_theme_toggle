@@ -10,7 +10,7 @@ pub(crate) fn start(
     app_tx: Sender<Message>,
     main_tx: Sender<()>,
     main_rx: Receiver<()>,
-) -> WttResult {
+) -> WttResult<&'static str> {
     let mut tray = TrayItem::new("Win Theme Toggle", "wtt-icon")?;
     let tray = tray.inner_mut();
     tray.add_label("Win Theme Toggle")?;

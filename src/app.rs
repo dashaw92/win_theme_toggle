@@ -1,7 +1,7 @@
 use crossbeam_channel::Receiver;
 
 use self::AppMode::*;
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
 use crate::{
     config::Config,
@@ -23,7 +23,7 @@ pub(crate) enum Message {
     UpdateConfig(Config),
 }
 
-pub(crate) fn launch(mode: AppMode) -> WttResult {
+pub(crate) fn launch(mode: AppMode) -> WttResult<&'static str> {
     let (config, rx) = match mode {
         ForceTheme(theme) => return reg::set_theme(theme),
         Auto(config) => return reg::set_theme(get_theme(&config)),
@@ -41,7 +41,7 @@ fn get_theme(config: &Config) -> Theme {
     }
 }
 
-fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> Result<&'static str, Box<dyn Error>> {
+fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> WttResult<&'static str> {
     enum InnerMode {
         Auto,
         Force(Theme),
@@ -54,7 +54,6 @@ fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> Result<&'static str
 
     let mut mode = InnerMode::Auto;
 
-    reg::set_theme(last)?;
     loop {
         let mut recv = rx.recv_timeout(Duration::from_secs(1));
         if recv.is_ok() {

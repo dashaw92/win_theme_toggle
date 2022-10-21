@@ -1,6 +1,5 @@
 #![windows_subsystem = "windows"]
 
-use std::error::Error;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -8,19 +7,21 @@ use std::{env, thread};
 
 mod app;
 mod config;
+mod error;
 mod reg;
 mod tray;
 
 use app::{AppMode, Message};
+use error::WttError;
 pub(crate) use log::debug;
 use notify::{RecursiveMode, Watcher};
 use simplelog::*;
 
 use crate::config::Config;
 
-pub(crate) type WttResult = Result<&'static str, Box<dyn Error>>;
+pub(crate) type WttResult<T> = Result<T, WttError>;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> WttResult<()> {
     WriteLogger::init(
         LevelFilter::Trace,
         simplelog::Config::default(),
@@ -28,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .append(true)
             .create(true)
             .open("wtt.log")
-            .unwrap(),
+            .expect("Failed to open log file"),
     )?;
 
     debug!("{}", "-".repeat(80));
@@ -56,12 +57,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let app_handle = thread::spawn(|| {
         let out = app::launch(mode);
         debug!("app::launch() = {:?}", out);
+        out
     });
 
     let app_tx_clone = app_tx.clone();
     let tray_handle = thread::spawn(move || {
         let out = tray::start(app_tx_clone, main_tx, main_rx);
         debug!("tray::start() = {:?}", out);
+        out
     });
 
     let mut watcher =
@@ -77,9 +80,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     watcher.watch(config_file.as_ref(), RecursiveMode::NonRecursive)?;
 
     loop {
-        if let Ok(()) = cfg_rx.recv_timeout(Duration::from_millis(500)) {
+        if cfg_rx.recv_timeout(Duration::from_millis(500)).is_ok() {
             let new_config = Config::from_cfg(get_config_file())?;
-            app_tx.send(Message::UpdateConfig(new_config))?;
+            app_tx
+                .send(Message::UpdateConfig(new_config))
+                .expect("Failed to send an app message.");
         }
 
         if app_handle.is_finished() || tray_handle.is_finished() {

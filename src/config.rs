@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use crate::debug;
+use crate::{debug, error::WttError, WttResult};
 
 use chrono::{Local, NaiveTime};
 use serde::{Deserialize, Serialize};
@@ -28,18 +28,19 @@ impl Default for Config {
 }
 
 impl Config {
-    pub(crate) fn from_cfg<P: AsRef<Path>>(config: P) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn from_cfg<P: AsRef<Path>>(config: P) -> WttResult<Self> {
         debug!("Loading config file");
         let config = match read_to_string(&config) {
-            Ok(file) => toml::from_str(&file)?,
+            Ok(file) => toml::from_str(&file).map_err(|_| WttError::ConfigDeserialize)?,
             Err(_) => {
                 debug!("Config file does not exist, attempting to create one.");
                 let mut config = File::create(config)?;
-                let default = toml::to_string(&Config::default())?;
+                let default =
+                    toml::to_string(&Config::default()).map_err(|_| WttError::ConfigDeserialize)?;
 
                 if let Err(e) = config.write_all(default.as_bytes()) {
                     debug!("Failed to write new config file: {:?}", e);
-                    return Err(e.into());
+                    return Err(WttError::ConfigLoad(e));
                 }
 
                 Config::default()
@@ -47,7 +48,7 @@ impl Config {
         };
 
         if config.light_time == config.dark_time {
-            return Err("Light and dark time cannot be the same".into());
+            return Err(WttError::ConfigInvalid);
         }
 
         Ok(config)
