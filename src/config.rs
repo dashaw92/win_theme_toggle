@@ -54,10 +54,7 @@ impl Config {
     }
 
     pub(crate) fn is_light_time(&self) -> bool {
-        let next_light = Local::today().and_time(self.light_time).unwrap();
-        let next_dark = Local::today().and_time(self.dark_time).unwrap();
-
-        let now = Local::now();
-        now >= next_light && now < next_dark
+        let now = Local::now().time();
+        now >= self.light_time && now < self.dark_time
     }
 }
