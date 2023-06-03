@@ -64,11 +64,9 @@ fn impl_daemon(mut config: Config, rx: Receiver<Message>) -> WttResult<&'static 
             Ok(Message::Shutdown) => return Ok("Got termination signal, shutting down..."),
             Ok(Message::Override(theme)) => {
                 debug!("Got an Override theme message!");
-                if let Some(theme) = theme {
-                    mode = Force(theme);
-                } else {
-                    mode = Auto;
-                }
+                mode = theme
+                    .map(|inner| Force(inner))
+                    .unwrap_or(Auto);
             }
             Ok(Message::UpdateConfig(ref mut new_config)) => {
                 debug!("Got an UpdateConfig message, swapping out old config!");
