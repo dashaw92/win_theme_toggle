@@ -11,6 +11,15 @@ pub(crate) enum Theme {
     Light,
 }
 
+impl Theme {
+    fn to_value(&self) -> u32 {
+        match self {
+            Theme::Dark => 0u32,
+            Theme::Light => 1u32,
+        }
+    }
+}
+
 //Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value {} -Type Dword -Force
 pub(crate) fn set_theme(theme: Theme) -> WttResult<&'static str> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
@@ -21,10 +30,12 @@ pub(crate) fn set_theme(theme: Theme) -> WttResult<&'static str> {
 
     path.set_value(
         "AppsUseLightTheme",
-        &match theme {
-            Theme::Dark => 0u32,
-            Theme::Light => 1u32,
-        },
+        &theme.to_value(),
+    )?;
+
+    path.set_value(
+        "SystemUsesLightTheme",
+        &theme.to_value(),
     )?;
     Ok("Registry has been updated.")
 }
